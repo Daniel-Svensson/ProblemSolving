@@ -19,7 +19,26 @@ let isPasswordValid2 i1 i2 letter (password:string) =
     | _ -> false
 
 let parseRow =
-    pipe4 pint32 (skipChar '-' >>. pint32) (spaces >>. letter) (skipChar ':' >>. spaces >>. manyChars letter)
+    pipe4 pint32 
+        (skipChar '-' >>. pint32) 
+        (spaces >>. letter) 
+        (skipChar ':' >>. spaces >>. manyChars letter)
+
+(*** same as parseRow, trying more verbose CE version
+let parseRow2 f = parse {
+    let! min = pint32
+    do! skipChar '-'
+    let! max = pint32
+    do! spaces
+    let! ch = letter
+
+    do! skipChar ':'
+    do! spaces
+    let! password = manyChars letter
+
+    return f min max ch password
+}
+***)
 
 let isRowValid isValid str =
     match run (parseRow isValid) str with
