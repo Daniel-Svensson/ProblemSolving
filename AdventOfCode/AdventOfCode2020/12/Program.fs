@@ -57,6 +57,23 @@ let step move state command =
     | Left ->  turnR state (360-command.Value)
 
 
+let step2 state command =
+    let turnR state angle =
+        match angle with
+            | 90 -> { state  with DirX = state.DirY; DirY = -state.DirX}
+            | 180 -> { state  with DirX = -state.DirX; DirY = -state.DirY}
+            | 270 -> { state  with DirX = -state.DirY; DirY = state.DirX}
+            | x -> failwithf "turnR %d is not implemented" x
+
+    match command.Action with
+    | North ->  { state with DirY = (state.DirY + command.Value)}
+    | South -> { state with DirY = (state.DirY - command.Value)}
+    | West -> { state with DirX = (state.DirX - command.Value)}
+    | East -> { state with DirX = (state.DirX + command.Value)}
+    | Forward -> { state with PosX = (state.PosX + command.Value * state.DirX); PosY = (state.PosY + command.Value * state.DirY)}
+    | Right -> turnR state command.Value
+    | Left ->  turnR state (360-command.Value)
+
 
 [<EntryPoint>]
 let main argv =
