@@ -32,6 +32,10 @@ module Ticket =
         str.Split(',')
         |> Array.map int
 
+    let valid rules ticket =
+        ticket 
+        |> Array.forall (fun field -> Array.exists (fun rule ->  Rule.valid field rule) rules)
+
 type ProblemInput = {Rules: Rule[]; YourTicket: Ticket; NearbyTickets: Ticket[]}
 
 let parse (lines:string[]) =
@@ -75,5 +79,51 @@ let main argv =
     |> Array.sumBy (ticketSum problem.Rules)
     |> printfn "Sum is %d"
 
+    let allTickes = Array.append problem.NearbyTickets [| problem.YourTicket |]
+
+
+
+    let validTickets = allTickes |> Array.filter (Ticket.valid problem.Rules)
+    let numFields = problem.YourTicket.Length
+
+    // Find possible rules per field
+    let possibleRules = Array.create numFields (problem.Rules)    
+    for ticket in validTickets do
+        for i in 0..numFields-1 do
+            possibleRules.[i] <- possibleRules.[i] |> Array.where (Rule.valid ticket.[i])
+
+    
+    possibleRules 
+    |> Array.iteri (fun idx  rules -> printfn "%d: %A" idx rules)
+
+
+    // Rules which can only happen at one place should be removed from all other
+    let mutable changed = true
+    while (changed) do
+        changed <- false
+        for i in 0..numFields-1 do
+            if (possibleRules.[i].Length = 1) then
+                let rule = possibleRules.[i].[0]
+                for (idx, rules) in (Array.indexed possibleRules) do
+                    if (idx <> i && (Array.contains rule rules)) then
+                        changed <- true
+                        possibleRules.[idx] <- rules |> Array.except [| rule |]
+                
+
+    possibleRules 
+    |> Array.iteri (fun idx  rules -> printfn "%d: %A" idx rules)
+
+
+    let matches = 
+        (Array.zip problem.YourTicket possibleRules)
+        |> Array.where (fun (i, rules) -> rules |> Array.exists (fun rule -> rule.Name.StartsWith("departure")))
+        
+    printfn "Matches\n: %A" matches
+
+
+    matches
+    |> Array.fold (fun acc (ticket,_) -> acc * (uint64 ticket)) 1UL
+    |> printfn "Sum = %d"
+        
 
     0 // return an integer exit code
