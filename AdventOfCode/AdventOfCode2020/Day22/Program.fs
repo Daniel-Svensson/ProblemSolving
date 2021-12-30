@@ -1,6 +1,7 @@
 ﻿open System.IO
 open System.Collections.Generic
 open System.Diagnostics
+open System
 
 
 let lines = File.ReadAllLines "input.txt"
@@ -35,21 +36,30 @@ let score (deck:IReadOnlyCollection<int>) =
 printfn "Score is %d" (score winner)
 
 // recursive combat
-type State = {Player1Cards : int[]; Player2Cards : int[]}    
+type State = {Player1Cards : int[]; Player2Cards : int[]}
 type Winner = Player1 | Player2
 
+let emptySet() =
+    let comparer = 
+        { new IEqualityComparer<State> with
+              member this.Equals(x, y) = 
+                ReadOnlySpan<int>(x.Player1Cards).SequenceEqual(y.Player1Cards)
+                && ReadOnlySpan<int>(x.Player2Cards).SequenceEqual(y.Player2Cards)
+              member this.GetHashCode(obj) = 
+                obj.Player1Cards.GetHashCode()
+        }
+    System.Collections.Generic.HashSet<State>(comparer)
 
 
-let rec recursiveCombat state set round =
+let rec recursiveCombat state (set:HashSet<State>) round =
 
     //printfn "\n-- Round %d --" round
     //printfn "Player1's deck: %A" state.Player1Cards
     //printfn "Player2's deck: %A" state.Player2Cards
-
-    if (Set.contains state set) then
+    if (set.Contains state) then
   //      printfn "GAME WON"
         (Player1, state)
-    else
+    else 
         match state with
         | {Player1Cards = [||]} -> (Player2, state)
         | {Player2Cards = [||]} -> (Player1, state)
@@ -59,7 +69,7 @@ let rec recursiveCombat state set round =
             let (d1, d2) = (state.Player1Cards.[1..], state.Player2Cards.[1..])
             let winner = 
                 if (c1 <= d1.Length && c2 <= d2.Length) then //c1 >= Length - 1
-                    fst (recursiveCombat {Player1Cards = state.Player1Cards.[1..c1]; Player2Cards = state.Player2Cards.[1..c2]} Set.empty 1)
+                    fst (recursiveCombat {Player1Cards = state.Player1Cards.[1..c1]; Player2Cards = state.Player2Cards.[1..c2]} (emptySet()) 1)
                 else
                     if (c1 > c2) then Player1 else Player2
             
@@ -68,9 +78,10 @@ let rec recursiveCombat state set round =
                 | Player1 -> {Player1Cards = (Array.append d1 [|c1;c2 |]); Player2Cards = d2}
                 | Player2 -> {Player1Cards = d1; Player2Cards = (Array.append d2 [|c2; c1 |])}
         
-            recursiveCombat newState (Set.add state set) (round + 1)
+            set.Add(state) |> ignore
+            recursiveCombat newState set (round + 1)
 
-let (w, st) = bench (fun () -> recursiveCombat {Player1Cards = player1.ToArray(); Player2Cards = player2.ToArray()} Set.empty 1)
+let (w, st) = bench (fun () -> recursiveCombat {Player1Cards = player1.ToArray(); Player2Cards = player2.ToArray()} (emptySet()) 1)
 
 match w with 
 | Player1 -> st.Player1Cards
